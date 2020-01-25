@@ -393,6 +393,8 @@ end
 
 local formspec_state = {}
 local function get_formspec(player_name)
+	local player = minetest.get_player_by_name(player_name)
+	local player_pos = player:get_pos()
 	local state = formspec_state[player_name] or {}
 	formspec_state[player_name] = state
 	state.row_index = state.row_index or 1
@@ -424,7 +426,19 @@ local function get_formspec(player_name)
 	if not areastore then
 		return ""
 	end
-	local areas = areastore:get_areas_in_area({x=-32000, y=-32000, z=-32000}, {x=32000, y=32000, z=32000}, true, true, true)
+	local areas_by_id = areastore:get_areas_in_area({x=-32000, y=-32000, z=-32000}, {x=32000, y=32000, z=32000}, true, true, true)
+	local areas = {}
+	for id, area in pairs(areas_by_id) do
+		area.id = id
+		table.insert(areas, area)
+	end
+	
+	table.sort(areas, function(area1, area2)
+		local dist1 = vector.distance(area1.min, player_pos)
+		local dist2 = vector.distance(area2.min, player_pos)
+		return dist1 < dist2
+	end)
+	
 	local selected_area = areas[state.selected_id]
 	if not selected_area then
 		state.row_index = 1
@@ -434,11 +448,9 @@ local function get_formspec(player_name)
 	local selected_data_string
 	local selected_data
 	
-	i = 0
-	for id, area in pairs(areas) do
-		i = i + 1
+	for i, area in pairs(areas) do
 		if i == state.row_index then
-			state.selected_id = id
+			state.selected_id = area.id
 			state.selected_pos = area.min
 			selected_area = area
 			selected_data_string = selected_area.data
@@ -464,7 +476,7 @@ local function get_formspec(player_name)
 	formspec[#formspec+1] = "textarea[0.5,5.75;7,2.25;waypoint_data;;".. minetest.formspec_escape(selected_data_string) .."]"
 
 	formspec[#formspec+1] = "container[0.5,8.25]"
-		.."button[0,0;1,0.5;save;"..S("Save").."]button[1,0;1,0.5;teleport;"..S("Teleport").."]"
+		.."button[0,0;1,0.5;teleport;"..S("Teleport").."]button[1,0;1,0.5;save;"..S("Save").."]"
 		.."button[2,0;1,0.5;rename;"..S("Rename").."]field[3,0;2,0.5;waypoint_name;;" .. selected_name .."]"
 		.."button[5,0;1,0.5;create;"..S("New").."]button[6,0;1,0.5;delete;"..S("Delete").."]"
 		.."container_end[]"
