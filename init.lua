@@ -201,6 +201,7 @@ local function test_items(player, item, location)
 		end
 
 	elseif location == hotbar_string then
+		local player_inv = player:get_inventory()
 		if group then
 			for i = 1,8 do
 				local hot_item = player_inv:get_Stack("main", i)
@@ -209,9 +210,9 @@ local function test_items(player, item, location)
 				end
 			end
 		else
-			local hot_required = ItemStack(hot)
+			local hot_required = ItemStack(item)
 			for i = 1, 8 do
-				local hot_item = player_inv:get_Stack("main", i)
+				local hot_item = player_inv:get_stack("main", i)
 				if hot_item:get_name() == hot_required:get_name() and hot_item:get_count() >= hot_required:get_count() then
 					return true
 				end
@@ -223,7 +224,7 @@ local function test_items(player, item, location)
 		if group then
 			return minetest.get_item_group(wielded_item:get_name(), group) > 0
 		else
-			local wielded_required = ItemStack(hand)
+			local wielded_required = ItemStack(item)
 			if wielded_item:get_name() == wielded_required:get_name() and wielded_item:get_count() >= wielded_required:get_count() then
 				return true
 			end
