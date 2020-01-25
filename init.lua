@@ -1,9 +1,10 @@
 local worldpath = minetest.get_worldpath()
---local modpath = minetest.get_modpath(minetest.get_current_modname())
 
 local S = minetest.get_translator("named_waypoints")
 
-named_wayponts = {}
+named_waypoints = {}
+
+local test_interval = 5
 
 local player_huds = {} -- Each player will have a table of [position_hash] = hud_id pairs in here
 local waypoint_defs = {} -- the registered definition tables
@@ -15,7 +16,7 @@ local wielded_string = "wielded"
 
 --waypoint_def = {
 --	default_name = , -- a string that's used if a waypoint's data doesn't have a "name" property
---	color = , -- if not defined, defaults to 0xFFFFFFFF
+--	default_color = , -- if not defined, defaults to 0xFFFFFFFF
 --	visibility_requires_item = , -- item, if not defined then nothing is required
 --	visibility_item_location = , -- "inventory", "hotbar", "wielded" (defaults to inventory if not provided)
 --	visibility_volume_radius = , -- required.
@@ -150,6 +151,10 @@ end
 
 local grouplen = #"group:"
 local function test_items(player, item, location)
+	if not item then
+		return true
+	end
+
 	location = location or inventory_string
 	local group
 	if item:sub(1,grouplen) == "group:" then
@@ -211,7 +216,7 @@ local function test_range(player_pos, waypoint_pos, volume_radius, volume_height
 			((player_pos.x - waypoint_pos.x)*(player_pos.x - waypoint_pos.x))+
 			((player_pos.z - waypoint_pos.z)*(player_pos.z - waypoint_pos.z))) <= volume_radius
 	else
-		return vector.distance(player_pos, waypoint_pos <= volume_radius)
+		return vector.distance(player_pos, waypoint_pos) <= volume_radius
 	end
 end
 
@@ -301,7 +306,8 @@ minetest.register_globalstep(function(dtime)
 		local disc_loc = waypoint_def.discovery_item_location
 		
 		local on_discovery = waypoint_def.on_discovery
-		local color = waypoint_def.color
+		local default_color = waypoint_def.default_color
+		local default_name = waypoint_def.default_name
 	
 		for _, player in ipairs(connected_players) do
 			local player_pos = player:get_pos()
@@ -315,7 +321,7 @@ minetest.register_globalstep(function(dtime)
 					local data = minetest.deserialize(area_data.data)
 					local discovered_by = data.discovered_by or {}
 	
-					if (not discovered_by or discovered_by[player_name]) and
+					if not discovered_by[player_name] and
 						test_items(player, disc_inv, disc_loc) 
 						and test_range(player_pos, pos, disc_radius, disc_height) then
 						
@@ -343,7 +349,8 @@ minetest.register_globalstep(function(dtime)
 				if (not disc_radius or (discovered_by and discovered_by[player_name])) and
 					test_items(player, vis_inv, vis_loc) 
 					and test_range(player_pos, pos, vis_radius, vis_height) then
-					add_hud_marker(waypoint_type, player, player_name, pos, data.name or waypoint_def.default_name, color)
+					add_hud_marker(waypoint_type, player, player_name, pos,
+						data.name or default_name, data.color or default_color)
 				end
 			end
 		end
