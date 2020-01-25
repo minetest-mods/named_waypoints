@@ -453,24 +453,21 @@ local function get_formspec(player_name)
 			..",".. minetest.formspec_escape(data_string)
 		formspec[#formspec+1] = ","
 	end
-	formspec[#formspec] = ";"..state.row_index.."]"
+	formspec[#formspec] = ";"..state.row_index.."]" -- don't use +1, this overwrites the last ","
 	
-	minetest.debug(dump(state))
-	minetest.debug(selected_name)
-	minetest.debug(selected_data_string)
-	
-	formspec[#formspec+1] = "container[0.5,5.15]"
-	formspec[#formspec+1] = "label[0,0.15;X]field[0.25,0;1,0.25;pos_x;;"..state.selected_pos.x.."]"
-	formspec[#formspec+1] = "label[1.5,0.15;Y]field[1.75,0;1,0.25;pos_y;;"..state.selected_pos.y.."]"
-	formspec[#formspec+1] = "label[3.0,0.15;Z]field[3.25,0;1,0.25;pos_z;;"..state.selected_pos.z.."]"
-	formspec[#formspec+1] = "container_end[]"
-	formspec[#formspec+1] = "textarea[0.5,5.75;7,2.25;waypoint_data;"
-		..selected_name..";".. minetest.formspec_escape(selected_data_string) .."]"
+	formspec[#formspec+1] = "container[0.5,5.25]"
+		.."label[0,0.15;X]field[0.25,0;1,0.25;pos_x;;"..state.selected_pos.x.."]"
+		.."label[1.5,0.15;Y]field[1.75,0;1,0.25;pos_y;;"..state.selected_pos.y.."]"
+		.."label[3.0,0.15;Z]field[3.25,0;1,0.25;pos_z;;"..state.selected_pos.z.."]"
+		.."container_end[]"
+
+	formspec[#formspec+1] = "textarea[0.5,5.75;7,2.25;waypoint_data;;".. minetest.formspec_escape(selected_data_string) .."]"
 
 	formspec[#formspec+1] = "container[0.5,8.25]"
-	formspec[#formspec+1] = "button[0,0;1,0.5;save;Save]button[1,0;1,0.5;teleport;Teleport]"
-	formspec[#formspec+1] = "button[2.5,0;1,0.5;create;Create]button[3.5,0;1,0.5;delete;Delete]"
-	formspec[#formspec+1] = "container_end[]"
+		.."button[0,0;1,0.5;save;"..S("Save").."]button[1,0;1,0.5;teleport;"..S("Teleport").."]"
+		.."button[2,0;1,0.5;rename;"..S("Rename").."]field[3,0;2,0.5;waypoint_name;;" .. selected_name .."]"
+		.."button[5,0;1,0.5;create;"..S("New").."]button[6,0;1,0.5;delete;"..S("Delete").."]"
+		.."container_end[]"
 
 	return table.concat(formspec)
 end
@@ -518,7 +515,7 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 		local pos_z = tonumber(fields.pos_z)
 		if deserialized and pos_x and pos_y and pos_z then
 			local areastore = waypoint_areastores[state.selected_type]
-			local pos = {x=pos_x, y=pos_y, z=pos_z}
+			local pos = vector.floor({x=pos_x, y=pos_y, z=pos_z})
 			areastore:remove_area(state.selected_id)
 			areastore:insert_area(pos, pos,
 				fields.waypoint_data, state.selected_id)
@@ -554,6 +551,18 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 		refresh = true
 	end	
 	
+	if fields.rename then
+		local areastore = waypoint_areastores[state.selected_type]
+		local area = areastore:get_area(state.selected_id, true, true)
+		local data = minetest.deserialize(area.data)
+		data.name = fields.waypoint_name
+		areastore:remove_area(state.selected_id)
+		areastore:insert_area(area.min, area.min, minetest.serialize(data), state.selected_id)
+		save(state.selected_type)
+		named_waypoints.reset_hud_markers(state.selected_type)
+		minetest.chat_send_player(player_name, S("Waypoint updated."))
+	end
+	
 	if fields.teleport then
 		player:set_pos(state.selected_pos)
 	end
@@ -562,8 +571,6 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 		minetest.show_formspec(player_name, "named_waypoints:server_controls", get_formspec(player_name))
 	end
 end)
-
-
 
 local function set_all_discovered(player_name, waypoint_type, state)
 	local waypoint_list = named_waypoints.get_waypoints_in_area(waypoint_type,
