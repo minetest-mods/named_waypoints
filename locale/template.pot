@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2020-01-24 16:30-0700\n"
+"POT-Creation-Date: 2020-01-25 00:50-0700\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,10 +17,49 @@ msgstr ""
 "Content-Type: text/plain; charset=CHARSET\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: init.lua:331
+#: init.lua:368
 msgid "You've discovered @1"
 msgstr ""
 
-#: init.lua:334
+#: init.lua:372
 msgid "OK"
+msgstr ""
+
+#: init.lua:468
+msgid "Open server controls for named_waypoints"
+msgstr ""
+
+#: init.lua:471
+#: init.lua:484
+msgid "This command is for server admins only."
+msgstr ""
+
+#: init.lua:517
+msgid "Waypoint updated."
+msgstr ""
+
+#: init.lua:519
+msgid "Invalid syntax."
+msgstr ""
+
+#: init.lua:538
+msgid "There's already a waypoint there."
+msgstr ""
+
+#: init.lua:568
+msgid "Set all waypoints of a type as discovered by you"
+msgstr ""
+
+#: init.lua:569
+#: init.lua:582
+msgid "waypoint type"
+msgstr ""
+
+#: init.lua:573
+#: init.lua:586
+msgid "Please provide a valid waypoint type as a parameter"
+msgstr ""
+
+#: init.lua:581
+msgid "Set all waypoints of a type as not discovered by you"
 msgstr ""

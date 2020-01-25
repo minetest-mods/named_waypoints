@@ -68,7 +68,7 @@ local function add_waypoint(waypoints_type, pos, waypoint_data, update_existing)
 
 	local data
 	if id then
-		local data = minetest.deserialize(existing_area[id].data)
+		data = minetest.deserialize(existing_area[id].data)
 		for k,v in pairs(waypoint_data) do
 			data[k] = v
 		end		
@@ -366,15 +366,19 @@ named_waypoints.default_discovery_popup = function(player, pos, data, waypoint_d
 	local player_name = player:get_player_name()
 	local discovery_name = data.name or waypoint_def.default_name
 	local discovery_note = S("You've discovered @1", discovery_name)
-	local formspec = "size[4,1]" ..
-		"label[1.0,0.0;" .. minetest.formspec_escape(discovery_note) ..
-		"]button_exit[0.5,0.75;3,0.5;btn_ok;".. S("OK") .."]"
+	local formspec = "formspec_version[2]" ..
+		"size[5,2]" ..
+		"label[1.25,0.75;" .. minetest.formspec_escape(discovery_note) ..
+		"]button_exit[1.0,1.25;3,0.5;btn_ok;".. S("OK") .."]"
 	minetest.show_formspec(player_name, "named_waypoints:discovery_popup", formspec)
 	minetest.chat_send_player(player_name, discovery_note)
 	minetest.log("action", "[named_waypoints] " .. player_name .. " discovered " .. discovery_name)
 	minetest.sound_play({name = "named_waypoints_chime01", gain = 0.25}, {to_player=player_name})
 end
 
+
+------------------------------------------------------------------------------------------------------------------
+--- Admin commands
 
 local formspec_state = {}
 local function get_formspec(player_name)
@@ -389,14 +393,20 @@ local function get_formspec(player_name)
 	}
 	
 	local types = {}
+	local i = 0
+	local dropdown_selected_index
 	for waypoint_type, def in pairs(waypoint_defs) do
+		i = i + 1
 		if not state.selected_type then
 			state.selected_type = waypoint_type
+		end
+		if state.selected_type == waypoint_type then
+			dropdown_selected_index = i
 		end
 		table.insert(types, waypoint_type)
 	end
 	local selected_def = waypoint_defs[state.selected_type]
-	formspec[#formspec+1] = table.concat(types, ",") .. ";]"
+	formspec[#formspec+1] = table.concat(types, ",") .. ";"..dropdown_selected_index.."]"
 	
 	formspec[#formspec+1] = "tablecolumns[text;text;text]table[0.5,1.0;7,4;waypoint_table;"
 	local areastore = waypoint_areastores[state.selected_type]
@@ -413,7 +423,7 @@ local function get_formspec(player_name)
 	local selected_data_string
 	local selected_data
 	
-	local i = 0
+	i = 0
 	for id, area in pairs(areas) do
 		i = i + 1
 		if i == state.row_index then
@@ -434,7 +444,10 @@ local function get_formspec(player_name)
 	end
 	formspec[#formspec] = ";"..state.row_index.."]"
 	
-
+	minetest.debug(dump(state))
+	minetest.debug(selected_name)
+	minetest.debug(selected_data_string)
+	
 	formspec[#formspec+1] = "container[0.5,5.15]"
 	formspec[#formspec+1] = "label[0,0.15;X]field[0.25,0;1,0.25;pos_x;;"..state.selected_pos.x.."]"
 	formspec[#formspec+1] = "label[1.5,0.15;Y]field[1.75,0;1,0.25;pos_y;;"..state.selected_pos.y.."]"
@@ -455,7 +468,7 @@ minetest.register_chatcommand("named_waypoints", {
     description = S("Open server controls for named_waypoints"),
     func = function(name, param)
 		if not minetest.check_player_privs(name, {server = true}) then
-			minetest.chat_send_player(name, S("this command is for server admins only."))
+			minetest.chat_send_player(name, S("This command is for server admins only."))
 			return
 		end
 		minetest.show_formspec(name, "named_waypoints:server_controls", get_formspec(name))
@@ -468,7 +481,7 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 	end
 	local player_name = player:get_player_name()
 	if not minetest.check_player_privs(player_name, {server = true}) then
-		minetest.chat_send_player(player_name, S("this command is for server admins only."))
+		minetest.chat_send_player(player_name, S("This command is for server admins only."))
 		return
 	end
 	
@@ -501,6 +514,7 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 
 			save(state.selected_type)
 			named_waypoints.reset_hud_markers(state.selected_type)
+			minetest.chat_send_player(player_name, S("Waypoint updated."))
 		else
 			minetest.chat_send_player(player_name, S("Invalid syntax."))
 		end
@@ -537,3 +551,41 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 		minetest.show_formspec(player_name, "named_waypoints:server_controls", get_formspec(player_name))
 	end
 end)
+
+
+
+local function set_all_discovered(player_name, waypoint_type, state)
+	local waypoint_list = named_waypoints.get_waypoints_in_area(waypoint_type,
+		{x=-32000, y=-32000, z=-32000}, {x=32000, y=32000, z=32000})
+	for id, waypoint in pairs(waypoint_list) do
+		waypoint.data.discovered_by = waypoint.data.discovered_by or {}
+		waypoint.data.discovered_by[player_name] = state
+		named_waypoints.update_waypoint(waypoint_type, waypoint.pos, waypoint.data)
+	end
+end
+
+minetest.register_chatcommand("named_waypoints_discover_all", {
+	description = S("Set all waypoints of a type as discovered by you"),
+	params = S("waypoint type"),
+	privs = {["server"]=true},
+	func = function(name, param)
+		if param == "" or waypoint_defs[param] == nil then
+			minetest.chat_send_player(name, S("Please provide a valid waypoint type as a parameter"))
+			return
+		end
+		set_all_discovered(name, param, true)
+	end,
+})
+
+minetest.register_chatcommand("named_waypoints_undiscover_all", {
+	description = S("Set all waypoints of a type as not discovered by you"),
+	params = S("waypoint type"),
+	privs = {["server"]=true},
+	func = function(name, param)
+		if param == "" or waypoint_defs[param] == nil then
+			minetest.chat_send_player(name, S("Please provide a valid waypoint type as a parameter"))
+			return
+		end
+		set_all_discovered(name, param, nil)
+	end,
+})

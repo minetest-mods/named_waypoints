@@ -1,5 +1,8 @@
 ## API
 
+The "/named_waypoints" chat command brings up an interface for use by server admins to view and edit waypoints.
+
+Caution: This interface lets you access the guts of the data stored for each waypoint, only make edits if you know what you're doing. You can disrupt other mods that may be using this mod to store information.
 
 ### named_waypoints.register_named_waypoints = function(waypoints_type, waypoints_def)
 
