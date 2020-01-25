@@ -52,7 +52,6 @@ local function save(waypoints_type)
 	end
 end
 
-
 -- invalidates a hud marker at a specific location
 local function remove_hud_marker(waypoints_type, pos)
 	local waypoint_def = waypoint_defs[waypoints_type]
@@ -153,6 +152,7 @@ named_waypoints.remove_waypoint = function(waypoints_type, pos)
 		return false -- nothing here
 	end
 	areastore:remove_area(id)
+	remove_hud_marker(waypoints_type, pos)
 	save(waypoints_type)
 	return true
 end
@@ -291,20 +291,6 @@ local function remove_distant_hud_markers(waypoint_type)
 	for _, player_name in ipairs(players_to_remove) do
 		player_huds[player_name] = nil
 	end
-end
-
--- For flushing outdated HUD markers when certain admin commands are performed.
-named_waypoints.reset_hud_markers = function(waypoint_type)
-	local waypoints_for_this_type = player_huds[waypoint_type]
-	for player_name, waypoints in pairs(waypoints_for_this_type) do
-		local player = minetest.get_player_by_name(player_name)
-		if player then
-			for pos_hash, hud_id in pairs(waypoints) do
-				player:hud_remove(hud_id)
-			end
-		end
-	end
-	player_huds[waypoint_type] = {}
 end
 
 local function get_range_box(pos, volume_radius, volume_height)
