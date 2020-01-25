@@ -19,7 +19,7 @@ local wielded_string = "wielded"
 --	default_color = , -- if not defined, defaults to 0xFFFFFFFF
 --	visibility_requires_item = , -- item, if not defined then nothing is required
 --	visibility_item_location = , -- "inventory", "hotbar", "wielded" (defaults to inventory if not provided)
---	visibility_volume_radius = , -- required.
+--	visibility_volume_radius = , -- If not defined, HUD waypoints will not be shown.
 --	visibility_volume_height = , -- if defined, then visibility check is done in a cylindrical volume rather than a sphere
 --	discovery_requires_item = ,-- item, if not defined then nothing is required
 --	discovery_item_location = ,-- -- "inventory", "hotbar", "wielded" (defaults to inventory if not provided)
@@ -29,7 +29,6 @@ local wielded_string = "wielded"
 --}
 
 named_waypoints.register_named_waypoints = function(waypoints_type, waypoints_def)
-	assert(waypoints_def.visibility_volume_radius)
 	waypoint_defs[waypoints_type] = waypoints_def
 	player_huds[waypoints_type] = {}
 
@@ -208,6 +207,9 @@ local function test_items(player, item, location)
 end
 
 local function test_range(player_pos, waypoint_pos, volume_radius, volume_height)
+	if not volume_radius then
+		return false
+	end
 	if volume_height then
 		if math.abs(player_pos.y - waypoint_pos.y) > volume_height then
 			return false
@@ -223,12 +225,16 @@ end
 -- doesn't test for discovery status being lost, it is assumed that waypoints are
 -- rarely ever un-discovered once discovered.
 local function remove_distant_hud_markers(waypoint_type)
+	local waypoint_def = waypoint_defs[waypoint_type]
+	local vis_radius = waypoint_def.visibility_volume_radius
+	if not vis_radius then
+		-- if there's no visibility, there won't be any hud markers to remove
+		return
+	end
 	local waypoints_for_this_type = player_huds[waypoint_type]
 	local players_to_remove = {}
-	local waypoint_def = waypoint_defs[waypoint_type]
 	local vis_inv = waypoint_def.visibility_requires_item
 	local vis_loc = waypoint_def.visibility_item_location
-	local vis_radius = waypoint_def.visibility_volume_radius
 	local vis_height = waypoint_def.visibility_volume_height
 
 	for player_name, waypoints in pairs(waypoints_for_this_type) do
@@ -292,72 +298,77 @@ minetest.register_globalstep(function(dtime)
 
 	local connected_players = minetest.get_connected_players()
 	for waypoint_type, waypoint_def in pairs(waypoint_defs) do
-		local areastore = waypoint_areastores[waypoint_type]
-		local dirty_areastore = false
-		
 		local vis_radius = waypoint_def.visibility_volume_radius
-		local vis_height = waypoint_def.visibility_volume_height
-		local vis_inv = waypoint_def.visibility_requires_item
-		local vis_loc = waypoint_def.visibility_item_location
-		
 		local disc_radius = waypoint_def.discovery_volume_radius
-		local disc_height = waypoint_def.discovery_volume_height
-		local disc_inv = waypoint_def.discovery_requires_item
-		local disc_loc = waypoint_def.discovery_item_location
-		
-		local on_discovery = waypoint_def.on_discovery
-		local default_color = waypoint_def.default_color
-		local default_name = waypoint_def.default_name
-	
-		for _, player in ipairs(connected_players) do
-			local player_pos = player:get_pos()
-			local player_name = player:get_player_name()
+		if vis_radius or disc_radius then
+
+			local areastore = waypoint_areastores[waypoint_type]
+			local dirty_areastore = false
 			
-			if disc_radius then			
-				local min_discovery_edge, max_discovery_edge = get_range_box(player_pos, disc_radius, disc_height)
-				local potentially_discoverable = areastore:get_areas_in_area(min_discovery_edge, max_discovery_edge, true, true, true)
-				for id, area_data in pairs(potentially_discoverable) do
-					local pos = area_data.min
-					local data = minetest.deserialize(area_data.data)
-					local discovered_by = data.discovered_by or {}
-	
-					if not discovered_by[player_name] and
-						test_items(player, disc_inv, disc_loc) 
-						and test_range(player_pos, pos, disc_radius, disc_height) then
-						
-						discovered_by[player_name] = true
-						data.discovered_by = discovered_by
-						areastore:remove_area(id)
-						areastore:insert_area(pos, pos, minetest.serialize(data), id)
-						
-						if on_discovery then
-							on_discovery(player, pos, data, waypoint_def)
+			local vis_height = waypoint_def.visibility_volume_height
+			local vis_inv = waypoint_def.visibility_requires_item
+			local vis_loc = waypoint_def.visibility_item_location
+			
+			local disc_height = waypoint_def.discovery_volume_height
+			local disc_inv = waypoint_def.discovery_requires_item
+			local disc_loc = waypoint_def.discovery_item_location
+			
+			local on_discovery = waypoint_def.on_discovery
+			local default_color = waypoint_def.default_color
+			local default_name = waypoint_def.default_name
+
+			for _, player in ipairs(connected_players) do
+				local player_pos = player:get_pos()
+				local player_name = player:get_player_name()
+				
+				if disc_radius then			
+					local min_discovery_edge, max_discovery_edge = get_range_box(player_pos, disc_radius, disc_height)
+					local potentially_discoverable = areastore:get_areas_in_area(min_discovery_edge, max_discovery_edge, true, true, true)
+					for id, area_data in pairs(potentially_discoverable) do
+						local pos = area_data.min
+						local data = minetest.deserialize(area_data.data)
+						local discovered_by = data.discovered_by or {}
+		
+						if not discovered_by[player_name] and
+							test_items(player, disc_inv, disc_loc) 
+							and test_range(player_pos, pos, disc_radius, disc_height) then
+							
+							discovered_by[player_name] = true
+							data.discovered_by = discovered_by
+							areastore:remove_area(id)
+							areastore:insert_area(pos, pos, minetest.serialize(data), id)
+							
+							if on_discovery then
+								on_discovery(player, pos, data, waypoint_def)
+							end
+							
+							dirty_areastore = true						
 						end
-						
-						dirty_areastore = true						
+					end			
+				end
+	
+				if vis_radius then
+					local min_visual_edge, max_visual_edge = get_range_box(player_pos, vis_radius, vis_height)
+					local potentially_visible = areastore:get_areas_in_area(min_visual_edge, max_visual_edge, true, true, true)
+					for id, area_data in pairs(potentially_visible) do
+						local pos = area_data.min
+						local data = minetest.deserialize(area_data.data)
+						local discovered_by = data.discovered_by
+	
+						if (not disc_radius or (discovered_by and discovered_by[player_name])) and
+							test_items(player, vis_inv, vis_loc) 
+							and test_range(player_pos, pos, vis_radius, vis_height) then
+							add_hud_marker(waypoint_type, player, player_name, pos,
+								data.name or default_name, data.color or default_color)
+						end
 					end
-				end			
-			end
-
-			local min_visual_edge, max_visual_edge = get_range_box(player_pos, vis_radius, vis_height)
-			local potentially_visible = areastore:get_areas_in_area(min_visual_edge, max_visual_edge, true, true, true)
-			for id, area_data in pairs(potentially_visible) do
-				local pos = area_data.min
-				local data = minetest.deserialize(area_data.data)
-				local discovered_by = data.discovered_by
-
-				if (not disc_radius or (discovered_by and discovered_by[player_name])) and
-					test_items(player, vis_inv, vis_loc) 
-					and test_range(player_pos, pos, vis_radius, vis_height) then
-					add_hud_marker(waypoint_type, player, player_name, pos,
-						data.name or default_name, data.color or default_color)
 				end
 			end
+			if dirty_areastore then
+				save(waypoint_type)
+			end
+			remove_distant_hud_markers(waypoint_type)
 		end
-		if dirty_areastore then
-			save(waypoint_type)
-		end
-		remove_distant_hud_markers(waypoint_type)
 	end
 end)
 
