@@ -87,4 +87,4 @@ Caution: This interface lets you access the guts of the data stored for each way
 
 ## License
 
-This mod is released under hte MIT license.
+This mod is released under the MIT license.
