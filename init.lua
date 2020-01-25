@@ -374,3 +374,166 @@ named_waypoints.default_discovery_popup = function(player, pos, data, waypoint_d
 	minetest.log("action", "[named_waypoints] " .. player_name .. " discovered " .. discovery_name)
 	minetest.sound_play({name = "named_waypoints_chime01", gain = 0.25}, {to_player=player_name})
 end
+
+
+local formspec_state = {}
+local function get_formspec(player_name)
+	local state = formspec_state[player_name] or {}
+	formspec_state[player_name] = state
+	state.row_index = state.row_index or 1
+
+	local formspec = {
+		"formspec_version[2]"
+		.."size[8,9]"
+		.."label[0.5,0.6;Type:]dropdown[1.25,0.5;2,0.25;type_select;"
+	}
+	
+	local types = {}
+	for waypoint_type, def in pairs(waypoint_defs) do
+		if not state.selected_type then
+			state.selected_type = waypoint_type
+		end
+		table.insert(types, waypoint_type)
+	end
+	local selected_def = waypoint_defs[state.selected_type]
+	formspec[#formspec+1] = table.concat(types, ",") .. ";]"
+	
+	formspec[#formspec+1] = "tablecolumns[text;text;text]table[0.5,1.0;7,4;waypoint_table;"
+	local areastore = waypoint_areastores[state.selected_type]
+	if not areastore then
+		return ""
+	end
+	local areas = areastore:get_areas_in_area({x=-32000, y=-32000, z=-32000}, {x=32000, y=32000, z=32000}, true, true, true)
+	local selected_area = areas[state.selected_id]
+	if not selected_area then
+		state.row_index = 1
+	end
+	
+	local selected_name
+	local selected_data_string
+	local selected_data
+	
+	local i = 0
+	for id, area in pairs(areas) do
+		i = i + 1
+		if i == state.row_index then
+			state.selected_id = id
+			state.selected_pos = area.min
+			selected_area = area
+			selected_data_string = selected_area.data
+			selected_data = minetest.deserialize(selected_data_string)
+			selected_name = minetest.formspec_escape(selected_data.name or selected_def.default_name or "unnamed")
+		end
+		local pos = area.min
+		local data_string = area.data
+		local data = minetest.deserialize(data_string)
+		formspec[#formspec+1] = minetest.formspec_escape(data.name or selected_def.default_name or "unnamed")
+			..","..minetest.formspec_escape(minetest.pos_to_string(pos))
+			..",".. minetest.formspec_escape(data_string)
+		formspec[#formspec+1] = ","
+	end
+	formspec[#formspec] = ";"..state.row_index.."]"
+	
+
+	formspec[#formspec+1] = "container[0.5,5.15]"
+	formspec[#formspec+1] = "label[0,0.15;X]field[0.25,0;1,0.25;pos_x;;"..state.selected_pos.x.."]"
+	formspec[#formspec+1] = "label[1.5,0.15;Y]field[1.75,0;1,0.25;pos_y;;"..state.selected_pos.y.."]"
+	formspec[#formspec+1] = "label[3.0,0.15;Z]field[3.25,0;1,0.25;pos_z;;"..state.selected_pos.z.."]"
+	formspec[#formspec+1] = "container_end[]"
+	formspec[#formspec+1] = "textarea[0.5,5.75;7,2.25;waypoint_data;"
+		..selected_name..";".. minetest.formspec_escape(selected_data_string) .."]"
+
+	formspec[#formspec+1] = "container[0.5,8.25]"
+	formspec[#formspec+1] = "button[0,0;1,0.5;save;Save]button[1,0;1,0.5;teleport;Teleport]"
+	formspec[#formspec+1] = "button[2.5,0;1,0.5;create;Create]button[3.5,0;1,0.5;delete;Delete]"
+	formspec[#formspec+1] = "container_end[]"
+
+	return table.concat(formspec)
+end
+
+minetest.register_chatcommand("named_waypoints", {
+    description = S("Open server controls for named_waypoints"),
+    func = function(name, param)
+		if not minetest.check_player_privs(name, {server = true}) then
+			minetest.chat_send_player(name, S("this command is for server admins only."))
+			return
+		end
+		minetest.show_formspec(name, "named_waypoints:server_controls", get_formspec(name))
+	end,
+})
+
+minetest.register_on_player_receive_fields(function(player, formname, fields)
+	if formname ~= "named_waypoints:server_controls" then
+		return
+	end
+	local player_name = player:get_player_name()
+	if not minetest.check_player_privs(player_name, {server = true}) then
+		minetest.chat_send_player(player_name, S("this command is for server admins only."))
+		return
+	end
+	
+	local refresh = false
+	local state = formspec_state[player_name]
+	if fields.type_select then
+		formspec_state[player_name].selected_type = fields.type_select
+		refresh = true
+	end
+	
+	if fields.waypoint_table then
+		local table_event = minetest.explode_table_event(fields.waypoint_table)
+		if table_event.type == "CHG" then
+			formspec_state[player_name].row_index = table_event.row
+			refresh = true
+		end
+	end
+	
+	if fields.save then
+		local deserialized = minetest.deserialize(fields.waypoint_data)
+		local pos_x = tonumber(fields.pos_x)
+		local pos_y = tonumber(fields.pos_y)
+		local pos_z = tonumber(fields.pos_z)
+		if deserialized and pos_x and pos_y and pos_z then
+			local areastore = waypoint_areastores[state.selected_type]
+			local pos = {x=pos_x, y=pos_y, z=pos_z}
+			areastore:remove_area(state.selected_id)
+			areastore:insert_area(pos, pos,
+				fields.waypoint_data, state.selected_id)
+
+			save(state.selected_type)
+			named_waypoints.reset_hud_markers(state.selected_type)
+		else
+			minetest.chat_send_player(player_name, S("Invalid syntax."))
+		end
+		refresh = true
+	end
+	
+	if fields.delete then
+		local areastore = waypoint_areastores[state.selected_type]
+		areastore:remove_area(state.selected_id)
+		save(state.selected_type)
+		named_waypoints.reset_hud_markers(state.selected_type)
+		refresh = true		
+	end
+	
+	if fields.create then
+		local pos = player:get_pos()
+		local areastore = waypoint_areastores[state.selected_type]
+		local existing_area = areastore:get_areas_for_pos(pos, false, true)
+		local id = next(existing_area)
+		if id then
+			minetest.chat_send_player(player_name, S("There's already a waypoint there."))
+			return
+		end		
+		areastore:insert_area(pos, pos, minetest.serialize({}))
+		save(state.selected_type)
+		refresh = true
+	end	
+	
+	if fields.teleport then
+		player:set_pos(state.selected_pos)
+	end
+	
+	if refresh then
+		minetest.show_formspec(player_name, "named_waypoints:server_controls", get_formspec(player_name))
+	end
+end)
