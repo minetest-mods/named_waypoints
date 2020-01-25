@@ -454,7 +454,7 @@ local function get_formspec(player_name)
 		return dist1 < dist2
 	end)
 	
-	local selected_area = areas[state.selected_id]
+	local selected_area = areas[state.row_index]
 	if not selected_area then
 		state.row_index = 1
 	end
@@ -462,7 +462,7 @@ local function get_formspec(player_name)
 	local selected_name = ""
 	local selected_data_string = ""
 	
-	for i, area in pairs(areas) do
+	for i, area in ipairs(areas) do
 		if i == state.row_index then
 			state.selected_id = area.id
 			state.selected_pos = area.min
