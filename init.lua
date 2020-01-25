@@ -52,6 +52,30 @@ local function save(waypoints_type)
 	end
 end
 
+
+-- invalidates a hud marker at a specific location
+local function remove_hud_marker(waypoints_type, pos)
+	local waypoint_def = waypoint_defs[waypoints_type]
+	if not waypoint_def.visibility_volume_radius then
+		-- if there's no visibility, there won't be any hud markers to remove
+		return
+	end
+	local target_hash = minetest.hash_node_position(pos)
+	local waypoints_for_this_type = player_huds[waypoints_type]
+	for player_name, waypoints in pairs(waypoints_for_this_type) do
+		local player = minetest.get_player_by_name(player_name)
+		if player then
+			for pos_hash, hud_id in pairs(waypoints) do
+				if pos_hash == target_hash then
+					player:hud_remove(hud_id)
+					waypoints[pos_hash] = nil
+					break
+				end
+			end
+		end
+	end
+end
+
 local function add_waypoint(waypoints_type, pos, waypoint_data, update_existing)
 	assert(type(waypoint_data) == "table")
 	local areastore = waypoint_areastores[waypoints_type]
@@ -72,6 +96,7 @@ local function add_waypoint(waypoints_type, pos, waypoint_data, update_existing)
 			data[k] = v
 		end		
 		areastore:remove_area(id)
+		remove_hud_marker(waypoints_type, pos)
 	else
 		data = waypoint_data
 	end
@@ -89,6 +114,9 @@ local function add_waypoint(waypoints_type, pos, waypoint_data, update_existing)
 end
 
 named_waypoints.add_waypoint = function(waypoints_type, pos, waypoint_data)
+	if not waypoint_data then
+		waypoint_data = {}
+	end
 	return add_waypoint(waypoints_type, pos, waypoint_data, false)
 end
 
@@ -444,9 +472,8 @@ local function get_formspec(player_name)
 		state.row_index = 1
 	end
 	
-	local selected_name
-	local selected_data_string
-	local selected_data
+	local selected_name = ""
+	local selected_data_string = ""
 	
 	for i, area in pairs(areas) do
 		if i == state.row_index then
@@ -454,7 +481,7 @@ local function get_formspec(player_name)
 			state.selected_pos = area.min
 			selected_area = area
 			selected_data_string = selected_area.data
-			selected_data = minetest.deserialize(selected_data_string)
+			local selected_data = minetest.deserialize(selected_data_string)
 			selected_name = minetest.formspec_escape(selected_data.name or selected_def.default_name or "unnamed")
 		end
 		local pos = area.min
@@ -533,7 +560,7 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 				fields.waypoint_data, state.selected_id)
 
 			save(state.selected_type)
-			named_waypoints.reset_hud_markers(state.selected_type)
+			remove_hud_marker(state.selected_type, state.selected_pos)
 			minetest.chat_send_player(player_name, S("Waypoint updated."))
 		else
 			minetest.chat_send_player(player_name, S("Invalid syntax."))
@@ -545,7 +572,7 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 		local areastore = waypoint_areastores[state.selected_type]
 		areastore:remove_area(state.selected_id)
 		save(state.selected_type)
-		named_waypoints.reset_hud_markers(state.selected_type)
+		remove_hud_marker(state.selected_type, state.selected_pos)
 		refresh = true		
 	end
 	
@@ -571,7 +598,7 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 		areastore:remove_area(state.selected_id)
 		areastore:insert_area(area.min, area.min, minetest.serialize(data), state.selected_id)
 		save(state.selected_type)
-		named_waypoints.reset_hud_markers(state.selected_type)
+		remove_hud_marker(state.selected_type, state.selected_pos)
 		minetest.chat_send_player(player_name, S("Waypoint updated."))
 	end
 	
