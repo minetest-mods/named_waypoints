@@ -481,6 +481,8 @@ local function get_formspec(player_name)
 	end
 	formspec[#formspec] = ";"..state.row_index.."]" -- don't use +1, this overwrites the last ","
 	
+	state.selected_pos = state.selected_pos or {x=0,y=0,z=0}
+	
 	formspec[#formspec+1] = "container[0.5,5.25]"
 		.."label[0,0.15;X]field[0.25,0;1,0.25;pos_x;;"..state.selected_pos.x.."]"
 		.."label[1.5,0.15;Y]field[1.75,0;1,0.25;pos_y;;"..state.selected_pos.y.."]"
