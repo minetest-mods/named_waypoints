@@ -461,7 +461,10 @@ local function get_formspec(player_name)
 	
 	local selected_name = ""
 	local selected_data_string = ""
-	
+
+	state.selected_id = nil
+	state.selected_pos = nil
+
 	for i, area in ipairs(areas) do
 		if i == state.row_index then
 			state.selected_id = area.id
@@ -541,7 +544,7 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 		local pos_x = tonumber(fields.pos_x)
 		local pos_y = tonumber(fields.pos_y)
 		local pos_z = tonumber(fields.pos_z)
-		if deserialized and pos_x and pos_y and pos_z then
+		if deserialized and pos_x and pos_y and pos_z and state.selected_id then
 			local areastore = waypoint_areastores[state.selected_type]
 			local pos = vector.floor({x=pos_x, y=pos_y, z=pos_z})
 			areastore:remove_area(state.selected_id)
