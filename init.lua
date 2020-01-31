@@ -192,7 +192,7 @@ local function test_items(player, item, location)
 		local player_inv = player:get_inventory()
 		if group then
 			for _, itemstack in pairs(player_inv:get_list("main")) do
-				if mintest.get_item_group(itemstack:get_name(), group) > 0 then
+				if minetest.get_item_group(itemstack:get_name(), group) > 0 then
 					return true
 				end
 			end
