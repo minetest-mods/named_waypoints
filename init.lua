@@ -417,6 +417,7 @@ local function get_formspec(player_name)
 	local formspec = {
 		"formspec_version[2]"
 		.."size[8,9]"
+		.."button_exit[7.0,0.25;0.5,0.5;close;X]"
 		.."label[0.5,0.6;Type:]dropdown[1.25,0.5;2,0.25;type_select;"
 	}
 	
@@ -518,6 +519,11 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 	if formname ~= "named_waypoints:server_controls" then
 		return
 	end
+
+	if fields.close then
+		return
+	end
+	
 	local player_name = player:get_player_name()
 	if not minetest.check_player_privs(player_name, {server = true}) then
 		minetest.chat_send_player(player_name, S("This command is for server admins only."))
