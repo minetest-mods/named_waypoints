@@ -1,0 +1,16 @@
+Delete=
+Invalid syntax.=
+New=
+OK=
+Open server controls for named_waypoints=
+Please provide a valid waypoint type as a parameter=
+Rename=
+Save=
+Set all waypoints of a type as discovered by you=
+Set all waypoints of a type as not discovered by you=
+Teleport=
+There's already a waypoint there.=
+This command is for server admins only.=
+Waypoint updated.=
+You've discovered @1=
+waypoint type=
