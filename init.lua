@@ -393,7 +393,7 @@ named_waypoints.default_discovery_popup = function(player, pos, data, waypoint_d
 	local discovery_name = data.name or waypoint_def.default_name
 	local discovery_note = S("You've discovered @1", discovery_name)
 	local formspec = "formspec_version[2]" ..
-		"size[5,2]" ..
+		"size[10,2]" ..
 		"label[1.25,0.75;" .. minetest.formspec_escape(discovery_note) ..
 		"]button_exit[1.0,1.25;3,0.5;btn_ok;".. S("OK") .."]"
 	minetest.show_formspec(player_name, "named_waypoints:discovery_popup", formspec)
@@ -416,9 +416,9 @@ local function get_formspec(player_name)
 
 	local formspec = {
 		"formspec_version[2]"
-		.."size[8,9]"
+		.."size[8,10]"
 		.."button_exit[7.0,0.25;0.5,0.5;close;X]"
-		.."label[0.5,0.6;Type:]dropdown[1.25,0.5;2,0.25;type_select;"
+		.."label[0.5,0.6;"..S("Type:").."]dropdown[2,0.35;4,0.5;type_select;"
 	}
 	
 	local types = {}
@@ -435,7 +435,7 @@ local function get_formspec(player_name)
 		table.insert(types, waypoint_type)
 	end
 	local selected_def = waypoint_defs[state.selected_type]
-	formspec[#formspec+1] = table.concat(types, ",") .. ";"..dropdown_selected_index.."]"
+	formspec[#formspec+1] = table.concat(types, ",") .. ";"..(dropdown_selected_index or 0).."]"
 	
 	formspec[#formspec+1] = "tablecolumns[text;text;text]table[0.5,1.0;7,4;waypoint_table;"
 	local areastore = waypoint_areastores[state.selected_type]
@@ -488,17 +488,17 @@ local function get_formspec(player_name)
 	state.selected_pos = state.selected_pos or {x=0,y=0,z=0}
 	
 	formspec[#formspec+1] = "container[0.5,5.25]"
-		.."label[0,0.15;X]field[0.25,0;1,0.25;pos_x;;"..state.selected_pos.x.."]"
-		.."label[1.5,0.15;Y]field[1.75,0;1,0.25;pos_y;;"..state.selected_pos.y.."]"
-		.."label[3.0,0.15;Z]field[3.25,0;1,0.25;pos_z;;"..state.selected_pos.z.."]"
+		.."label[0,0.15;X]field[0.25,-0.15;1,0.5;pos_x;;"..state.selected_pos.x.."]"
+		.."label[1.5,0.15;Y]field[1.75,-0.15;1,0.5;pos_y;;"..state.selected_pos.y.."]"
+		.."label[3.0,0.15;Z]field[3.25,-0.15;1,0.5;pos_z;;"..state.selected_pos.z.."]"
 		.."container_end[]"
 
 	formspec[#formspec+1] = "textarea[0.5,5.75;7,2.25;waypoint_data;;".. minetest.formspec_escape(selected_data_string) .."]"
 
 	formspec[#formspec+1] = "container[0.5,8.25]"
-		.."button[0,0;1,0.5;teleport;"..S("Teleport").."]button[1,0;1,0.5;save;"..S("Save").."]"
-		.."button[2,0;1,0.5;rename;"..S("Rename").."]field[3,0;2,0.5;waypoint_name;;" .. selected_name .."]"
-		.."button[5,0;1,0.5;create;"..S("New").."]button[6,0;1,0.5;delete;"..S("Delete").."]"
+		.."button[0,0;3,0.5;teleport;"..S("Teleport").."]button[3.5,0;3,0.5;save;"..S("Save").."]"
+		.."button[0,0.5;3,0.5;rename;"..S("Rename").."]field[3.5,0.5;3,0.5;waypoint_name;;" .. selected_name .."]"
+		.."button[0,1;3,0.5;create;"..S("New").."]button[3.5,1;3,0.5;delete;"..S("Delete").."]"
 		.."container_end[]"
 
 	return table.concat(formspec)
@@ -546,6 +546,9 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 	end
 	
 	if fields.save then
+		if state.selected_id == nil then
+			return
+		end
 		local deserialized = minetest.deserialize(fields.waypoint_data)
 		local pos_x = tonumber(fields.pos_x)
 		local pos_y = tonumber(fields.pos_y)
@@ -567,6 +570,9 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 	end
 	
 	if fields.delete then
+		if state.selected_id == nil then
+			return
+		end
 		local areastore = waypoint_areastores[state.selected_type]
 		areastore:remove_area(state.selected_id)
 		save(state.selected_type)
@@ -589,6 +595,9 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 	end	
 	
 	if fields.rename then
+		if state.selected_id == nil then
+			return
+		end
 		local areastore = waypoint_areastores[state.selected_type]
 		local area = areastore:get_area(state.selected_id, true, true)
 		local data = minetest.deserialize(area.data)

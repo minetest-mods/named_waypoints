@@ -29,6 +29,8 @@ Teleport=
 There's already a waypoint there.=
 #chat command error message
 This command is for server admins only.=
+#Type of waypoint label
+Type:=
 #player chat
 Waypoint updated.=
 #text of the default popup shown when a player discovers a waypoint
