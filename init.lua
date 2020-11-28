@@ -395,13 +395,54 @@ named_waypoints.default_discovery_popup = function(player, pos, data, waypoint_d
 	local formspec = "formspec_version[2]" ..
 		"size[10,2]" ..
 		"label[1.25,0.75;" .. minetest.formspec_escape(discovery_note) ..
-		"]button_exit[1.0,1.25;3,0.5;btn_ok;".. S("OK") .."]"
+		"]button_exit[3.5,1.25;3,0.5;btn_ok;".. S("OK") .."]"
 	minetest.show_formspec(player_name, "named_waypoints:discovery_popup", formspec)
 	minetest.chat_send_player(player_name, discovery_note)
 	minetest.log("action", "[named_waypoints] " .. player_name .. " discovered " .. discovery_name)
 	minetest.sound_play({name = "named_waypoints_chime01", gain = 0.25}, {to_player=player_name})
 end
 
+local player_log_formspec_open
+
+if minetest.get_modpath("personal_log") and personal_log ~= nil then
+	player_log_formspec_open = {}
+
+	named_waypoints.default_discovery_popup = function(player, pos, data, waypoint_def)
+		local player_name = player:get_player_name()
+		local discovery_name = data.name or waypoint_def.default_name
+		local discovery_note = S("You've discovered @1", discovery_name)
+		local formspec = "formspec_version[2]" ..
+			"size[10,2]" ..
+			"label[1.25,0.75;" .. minetest.formspec_escape(discovery_note) ..
+			"]button_exit[2.0,1.25;3,0.5;btn_ok;".. S("OK") .."]" ..
+			"button_exit[5.0,1.25;3,0.5;btn_log;"..S("Log location").."]"
+	
+		minetest.show_formspec(player_name, "named_waypoints:discovery_popup_log", formspec)
+		minetest.chat_send_player(player_name, discovery_note)
+		minetest.log("action", "[named_waypoints] " .. player_name .. " discovered " .. discovery_name)
+		minetest.sound_play({name = "named_waypoints_chime01", gain = 0.25}, {to_player=player_name})
+		player_log_formspec_open[player_name] = {data=data, waypoint_def=waypoint_def, pos=pos}
+	end
+	
+	minetest.register_on_player_receive_fields(function(player, formname, fields)
+		if formname ~= "named_waypoints:discovery_popup_log" then
+			return
+		end
+		local player_name = player:get_player_name()
+		local waypoint_data = player_log_formspec_open[player_name]
+		if not waypoint_data then
+			return
+		end
+		
+		if fields.btn_log then
+			local discovery_name = waypoint_data.data.name or waypoint_data.waypoint_def.default_name
+			personal_log.add_location_entry(player_name, discovery_name, waypoint_data.pos)
+			minetest.chat_send_player(player_name, S("Location of @1 added to your personal log", discovery_name))
+		end
+		
+		player_log_formspec_open[player_name] = nil		
+	end)
+end
 
 ------------------------------------------------------------------------------------------------------------------
 --- Admin commands

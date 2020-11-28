@@ -85,6 +85,10 @@ Caution: This interface lets you access the guts of the data stored for each way
 
 "``/named_waypoints_discover_all <waypoints_type>``" and "``/named_waypoints_undiscover_all <waypoints_type>``" will set all existing waypoints of the provided type to be either discovered or not discovered by you. It can be useful for a server administrator to "know all and see all" as it were. Note that visibility item and range limitations still apply.
 
+## personal_log integration
+
+If you have the personal_log mod installed, the default waypoint-discovery notification popup will include an option to log the location of the just-discovered waypoint. It will create a log entry for that player with the waypoint's name as its content.
+
 ## License
 
 This mod is released under the MIT license.

@@ -7,6 +7,8 @@
 Delete=
 #warning that incorrect data was entered for a waypoint in the UI
 Invalid syntax.=
+Location of @1 added to your personal log=
+Log location=
 #button label
 New=
 #button label
