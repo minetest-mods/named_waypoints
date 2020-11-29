@@ -32,7 +32,7 @@ named_waypoints.register_named_waypoints = function(waypoints_type, waypoints_de
 	waypoint_defs[waypoints_type] = waypoints_def
 	player_huds[waypoints_type] = {}
 
-	local areastore_filename = worldpath.."/named_waypoints_".. waypoints_type ..".txt"
+	local areastore_filename = worldpath.."/named_waypoints_"..  string.gsub(waypoints_type, ":", "_") ..".txt"
 	local area_file = io.open(areastore_filename, "r")
 	local areastore = AreaStore()
 	if area_file then
@@ -43,7 +43,7 @@ named_waypoints.register_named_waypoints = function(waypoints_type, waypoints_de
 end
 
 local function save(waypoints_type)
-	local areastore_filename = worldpath.."/named_waypoints_".. waypoints_type ..".txt"
+	local areastore_filename = worldpath.."/named_waypoints_".. string.gsub(waypoints_type, ":", "_") ..".txt"
 	local areastore = waypoint_areastores[waypoints_type]
 	if areastore then
 		areastore:to_file(areastore_filename)
