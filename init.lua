@@ -574,14 +574,14 @@ minetest.register_on_player_receive_fields(function(player, formname, fields)
 	local refresh = false
 	local state = formspec_state[player_name]
 	if fields.type_select then
-		formspec_state[player_name].selected_type = fields.type_select
+		state.selected_type = fields.type_select
 		refresh = true
 	end
 	
 	if fields.waypoint_table then
 		local table_event = minetest.explode_table_event(fields.waypoint_table)
 		if table_event.type == "CHG" then
-			formspec_state[player_name].row_index = table_event.row
+			state.row_index = table_event.row
 			refresh = true
 		end
 	end
