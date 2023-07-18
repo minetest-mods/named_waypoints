@@ -172,7 +172,8 @@ local function add_hud_marker(waypoints_type, player, player_name, pos, label, c
 		name = label,
 		text = "m",
 		number = color,
-		world_pos = pos})
+		world_pos = pos,
+		precision = 1})
 	waypoints[pos_hash] = hud_id
 end
 
