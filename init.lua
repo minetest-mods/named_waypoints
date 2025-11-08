@@ -205,7 +205,7 @@ local function test_items(player, item, location)
 		local player_inv = player:get_inventory()
 		if group then
 			for i = 1,8 do
-				local hot_item = player_inv:get_Stack("main", i)
+				local hot_item = player_inv:get_stack("main", i)
 				if minetest.get_item_group(hot_item:get_name(), group) > 0 then
 					return true
 				end
