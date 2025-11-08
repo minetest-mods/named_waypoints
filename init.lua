@@ -1,9 +1,9 @@
-local worldpath = minetest.get_worldpath()
 
 local S = minetest.get_translator("named_waypoints")
 
 named_waypoints = {}
 
+local storage = minetest.get_mod_storage()
 local test_interval = 5
 
 local player_huds = {} -- Each player will have a table of [position_hash] = hud_id pairs in here
@@ -28,28 +28,62 @@ local wielded_string = "wielded"
 --	on_discovery = function(player, pos, waypoint_data, waypoint_def) -- use "named_waypoints.default_discovery_popup" for a generic discovery notification
 --}
 
-named_waypoints.register_named_waypoints = function(waypoints_type, waypoints_def)
-	waypoint_defs[waypoints_type] = waypoints_def
-	player_huds[waypoints_type] = {}
-
-	local areastore_filename = worldpath.."/named_waypoints_"..  string.gsub(waypoints_type, ":", "_") ..".txt"
-	local area_file = io.open(areastore_filename, "r")
-	local areastore = AreaStore()
-	if area_file then
-		area_file:close()
-		areastore:from_file(areastore_filename)
-	end
-	waypoint_areastores[waypoints_type] = areastore	
+local pending_save = {}
+local function schedule_save(waypoints_type, delay)
+	if pending_save[waypoints_type] then return end
+	pending_save[waypoints_type] = true
+	minetest.after(delay or 30, function()
+		local as = waypoint_areastores[waypoints_type]
+		if as then
+			-- Serializa y guarda en modstorage
+			local bytes = as:to_string()  -- :contentReference[oaicite:3]{index=3}
+			-- compress 5.7+
+			bytes = minetest.compress(bytes, "zstd") -- :contentReference[oaicite:4]{index=4}
+			storage:set_string("named_waypoints:" .. waypoints_type, bytes) -- :contentReference[oaicite:5]{index=5}
+		end
+		pending_save[waypoints_type] = nil
+	end)
 end
 
-local function save(waypoints_type)
-	local areastore_filename = worldpath.."/named_waypoints_".. string.gsub(waypoints_type, ":", "_") ..".txt"
-	local areastore = waypoint_areastores[waypoints_type]
-	if areastore then
-		areastore:to_file(areastore_filename)
+-- Carga/registro por tipo usando modstorage (con migración desde archivo si existía)
+function named_waypoints.register_named_waypoints(waypoints_type, waypoints_def)
+	waypoint_defs[waypoints_type] = waypoints_def
+	player_huds[waypoints_type] = {}
+	local as = AreaStore()  -- :contentReference[oaicite:6]{index=6}
+	local key = "named_waypoints:" .. waypoints_type
+	local blob = storage:get_string(key)
+	if blob ~= "" then
+		-- decompress 5.7+
+		blob = minetest.decompress(blob, "zstd")
+		local ok, err = as:from_string(blob)  -- :contentReference[oaicite:7]{index=7}
+		if not ok then
+			minetest.log("error", "[named_waypoints] Failed to load AreaStore for " .. waypoints_type .. ": " .. (err or "unknown"))
+		end
 	else
-		minetest.log("error", "[named_waypoints] attempted to save areastore for unregistered type " .. waypoints_type)
+		-- MIGRACIÓN OPCIONAL desde worldpath -> modstorage (una sola vez)
+		-- útil si ya tenías archivos *.txt creados por la versión anterior
+		local areastore_filename = minetest.get_worldpath() ..
+			"/named_waypoints_" .. string.gsub(waypoints_type, ":", "_") .. ".txt"
+		local f = io.open(areastore_filename, "rb")
+		if f then
+			f:close()
+			as:from_file(areastore_filename)  -- :contentReference[oaicite:8]{index=8}
+			-- save inmediatly in modstorage
+			local bytes = as:to_string()
+			-- compress 5.7+
+			bytes = minetest.compress(bytes, "zstd")
+			storage:set_string(key, bytes)
+			-- remove old file
+			os.remove(areastore_filename)
+			minetest.log("action", "[named_waypoints] Migrated " .. waypoints_type .. " to modstorage")
+		end
 	end
+	waypoint_areastores[waypoints_type] = as
+end
+
+-- Sustituye 'save()' por 'schedule_save()'
+local function save(waypoints_type)
+	schedule_save(waypoints_type, 30) -- guarda en lotes cada ~30s por tipo
 end
 
 -- invalidates a hud marker at a specific location
