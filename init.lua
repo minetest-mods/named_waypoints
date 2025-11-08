@@ -291,7 +291,7 @@ local function remove_distant_hud_markers(waypoint_type)
 		end
 	end
 	for _, player_name in ipairs(players_to_remove) do
-		player_huds[player_name] = nil
+		waypoints_for_this_type[player_name] = nil
 	end
 end
 
