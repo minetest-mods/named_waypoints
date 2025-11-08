@@ -166,7 +166,7 @@ local function add_hud_marker(waypoints_type, player, player_name, pos, label, c
 		return
 	end
 	waypoints_for_this_type[player_name] = waypoints
-	color = color or 0xFFFFFF
+	color = color or 0xFFFFFFFF
 	local hud_id = player:hud_add({
 		hud_elem_type = "waypoint",
 		name = label,
@@ -205,7 +205,7 @@ local function test_items(player, item, location)
 		local player_inv = player:get_inventory()
 		if group then
 			for i = 1,8 do
-				local hot_item = player_inv:get_Stack("main", i)
+				local hot_item = player_inv:get_stack("main", i)
 				if minetest.get_item_group(hot_item:get_name(), group) > 0 then
 					return true
 				end
@@ -291,7 +291,7 @@ local function remove_distant_hud_markers(waypoint_type)
 		end
 	end
 	for _, player_name in ipairs(players_to_remove) do
-		player_huds[player_name] = nil
+		waypoints_for_this_type[player_name] = nil
 	end
 end
 
