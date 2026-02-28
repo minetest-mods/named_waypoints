@@ -1,0 +1,41 @@
+# textdomain: named_waypoints
+
+
+### init.lua ###
+
+#button label
+Delete=Удалить
+#warning that incorrect data was entered for a waypoint in the UI
+Invalid syntax.=Неверный синтаксис.
+Location of @1 added to your personal log=Местоположение @1 добавлено в ваш журнал
+Log location=Записать локацию
+#button label
+New=Новая
+#button label
+OK=
+#chat command help text
+Open server controls for named_waypoints=Открыть панель управления named_waypoints
+#chat command error message
+Please provide a valid waypoint type as a parameter=Пожалуйста, укажите верный тип путевой точки в параметрах
+#button label
+Rename=Переименовать
+#button label
+Save=Сохранить
+#chat command help text
+Set all waypoints of a type as discovered by you=Отметить все точки этого типа как открытые вами
+#chat command help text
+Set all waypoints of a type as not discovered by you=Отметить все точки этого типа как не открытые вами
+#button label
+Teleport=Телепортироваться
+#error message for when trying to create a waypoint where one already exists
+There's already a waypoint there.=Здесь уже есть путевая точка.
+#chat command error message
+This command is for server admins only.=Эта команда доступна только администраторам сервера.
+#Type of waypoint label
+Type:=Тип:
+#player chat
+Waypoint updated.=Путевая точка обновлена.
+#text of the default popup shown when a player discovers a waypoint
+You've discovered @1=Вы открыли: @1
+#chat command parameter help
+waypoint type=тип путевой точки
